@@ -106,5 +106,5 @@ func LimitComposite(f, g Function, a float64) (float64, bool) {
 //M::::::M               M::::::M OO:::::::::::::OO   UU:::::::::::::UUA:::::A               A:::::A    A:::::A               A:::::A  D:::::::::::::::DD   
 //M::::::M               M::::::M   OO:::::::::OO       UU:::::::::UU A:::::A                 A:::::A  A:::::A                 A:::::A D::::::::::::DDD     
 //MMMMMMMM               MMMMMMMM     OOOOOOOOO           UUUUUUUUU  AAAAAAA                   AAAAAAAAAAAAAA                   AAAAAAADDDDDDDDDDDDD        
-// Created by: MOUAAD
-// MathsWithGolang - Pure Golang Mathematical Library
+// Created by: MOUAAD IDOUFKIR
+// << The universe runs on equations. We just translate them >>

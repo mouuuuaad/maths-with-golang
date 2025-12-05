@@ -84,5 +84,5 @@ func NewtonsRecurrence(f, df func(float64) float64, x0 float64, n int) float64 {
 //M::::::M               M::::::M OO:::::::::::::OO   UU:::::::::::::UUA:::::A               A:::::A    A:::::A               A:::::A  D:::::::::::::::DD   
 //M::::::M               M::::::M   OO:::::::::OO       UU:::::::::UU A:::::A                 A:::::A  A:::::A                 A:::::A D::::::::::::DDD     
 //MMMMMMMM               MMMMMMMM     OOOOOOOOO           UUUUUUUUU  AAAAAAA                   AAAAAAAAAAAAAA                   AAAAAAADDDDDDDDDDDDD        
-// Created by: MOUAAD
-// MathsWithGolang - Pure Golang Mathematical Library
+// Created by: MOUAAD IDOUFKIR
+// << The universe runs on equations. We just translate them >>

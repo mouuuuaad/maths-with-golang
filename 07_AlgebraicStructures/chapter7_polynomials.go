@@ -118,4 +118,4 @@ func LagrangeInterpolation(x, y []float64) Polynomial {
 //M::::::M               M::::::M   OO:::::::::OO       UU:::::::::UU A:::::A                 A:::::A  A:::::A                 A:::::A D::::::::::::DDD     
 //MMMMMMMM               MMMMMMMM     OOOOOOOOO           UUUUUUUUU  AAAAAAA                   AAAAAAAAAAAAAA                   AAAAAAADDDDDDDDDDDDD        
 // Created by: MOUAAD IDOUFKIR
-// MathsWithGolang - Pure Golang Mathematical Library
+// << The universe runs on equations. We just translate them >>
