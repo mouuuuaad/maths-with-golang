@@ -1,0 +1,87 @@
+package algebra
+
+func IsSubgroup(G Group, elements []interface{}) bool {
+	if len(elements) == 0 {
+		return false
+	}
+	hasIdentity := false
+	for _, e := range elements {
+		if e == G.Identity() {
+			hasIdentity = true
+			break
+		}
+	}
+	if !hasIdentity {
+		return false
+	}
+	for _, a := range elements {
+		invA := G.Inverse(a)
+		found := false
+		for _, e := range elements {
+			if e == invA {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func LeftCoset(G Group, H []interface{}, g interface{}) []interface{} {
+	result := make([]interface{}, len(H))
+	for i, h := range H {
+		result[i] = G.Operate(g, h)
+	}
+	return result
+}
+
+func RightCoset(G Group, H []interface{}, g interface{}) []interface{} {
+	result := make([]interface{}, len(H))
+	for i, h := range H {
+		result[i] = G.Operate(h, g)
+	}
+	return result
+}
+
+func OrderOfElement(G CyclicGroup, a int) int {
+	if a == 0 {
+		return 1
+	}
+	current := a
+	for order := 1; order <= G.Order; order++ {
+		if current == 0 {
+			return order
+		}
+		current = G.Operate(current, a).(int)
+	}
+	return G.Order
+}
+
+func Index(groupOrder, subgroupOrder int) int {
+	if subgroupOrder == 0 {
+		return 0
+	}
+	return groupOrder / subgroupOrder
+}
+
+func NormalSubgroup(G Group, H []interface{}, generators []interface{}) bool {
+	for _, g := range generators {
+		for _, h := range H {
+			ghg1 := G.Operate(G.Operate(g, h), G.Inverse(g))
+			found := false
+			for _, e := range H {
+				if e == ghg1 {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+	}
+	return true
+}
