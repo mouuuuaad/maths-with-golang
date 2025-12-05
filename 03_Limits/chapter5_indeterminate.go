@@ -2,7 +2,6 @@ package limits
 
 import "math"
 
-// IndeterminateType represents the type of indeterminate form
 type IndeterminateType int
 
 const (
@@ -13,7 +12,6 @@ const (
 	InfMinusInf
 )
 
-// CheckIndeterminate checks if f(a)/g(a) is an indeterminate form
 func CheckIndeterminate(f, g Function, a float64) IndeterminateType {
 	fa := f(a)
 	ga := g(a)
