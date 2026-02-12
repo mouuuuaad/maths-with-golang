@@ -13,7 +13,7 @@
 If you discover a security vulnerability within MathsWithGolang, please follow these steps:
 
 1. **Do NOT** create a public GitHub issue for security vulnerabilities
-2. Email the maintainer directly at: **mouaad.idoufkir@example.com**
+2. Email the maintainer directly at: **mouaadidoufkir.contact@gmail.com**
 3. Include a detailed description of the vulnerability
 4. Provide steps to reproduce the issue if possible
 
