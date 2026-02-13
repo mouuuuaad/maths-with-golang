@@ -343,10 +343,7 @@ func LBFGS(f ObjectiveFunc, grad func([]float64) []float64, x0 []float64, settin
 func lineSearchArmijo(f ObjectiveFunc, x, p []float64, c1, tau float64) float64 {
 	alpha := 1.0
 	fx := f(x)
-	g := make([]float64, len(x))
-	for i := range x {
-		g[i] = 0
-	}
+	g := finiteDiffGradQ(f, x, 1e-6)
 	for i := 0; i < 10; i++ {
 		xNew := addVec(x, scaleVec(p, alpha))
 		if f(xNew) <= fx+c1*alpha*dotProd(g, p) {
@@ -355,6 +352,21 @@ func lineSearchArmijo(f ObjectiveFunc, x, p []float64, c1, tau float64) float64 
 		alpha *= tau
 	}
 	return alpha
+}
+
+func finiteDiffGradQ(f ObjectiveFunc, x []float64, h float64) []float64 {
+	if h == 0 {
+		h = 1e-6
+	}
+	grad := make([]float64, len(x))
+	for i := range x {
+		xp := cloneVec(x)
+		xm := cloneVec(x)
+		xp[i] += h
+		xm[i] -= h
+		grad[i] = (f(xp) - f(xm)) / (2 * h)
+	}
+	return grad
 }
 
 func identityMat(n int) [][]float64 {

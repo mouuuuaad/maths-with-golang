@@ -1,6 +1,11 @@
+// 2026 Update: Calculus Applications
 package calculus
 
+import "math"
+
 type DifferentialEquation func(x, y float64) float64
+
+type ODESystem func(x float64, y []float64) []float64
 
 func EulerMethod(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
 	x := x0
@@ -19,6 +24,18 @@ func HeunMethod(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
 		k1 := f(x, y)
 		k2 := f(x+step, y+step*k1)
 		y += step * (k1 + k2) / 2
+		x += step
+	}
+	return y
+}
+
+func MidpointMethod(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
+	x := x0
+	y := y0
+	for x < xEnd {
+		k1 := f(x, y)
+		k2 := f(x+step/2, y+step*k1/2)
+		y += step * k2
 		x += step
 	}
 	return y
@@ -79,109 +96,275 @@ func AdaptiveRK45(f DifferentialEquation, x0, y0, xEnd, tol float64) float64 {
 		} else {
 			h *= 0.9 * powerS(tol/err, 0.25)
 		}
-		if x+h > xEnd {
-			h = xEnd - x
+		if h < 1e-8 {
+			break
 		}
 	}
 	return y
 }
 
-func NewtonRaphson(f, df Function, x0 float64, maxIter int) float64 {
+func EulerSystem(f ODESystem, x0 float64, y0 []float64, xEnd, step float64) ([]float64, []float64) {
 	x := x0
-	for i := 0; i < maxIter; i++ {
-		fx := f(x)
-		if absL(fx) < 1e-12 {
-			return x
+	y := make([]float64, len(y0))
+	copy(y, y0)
+	xs := []float64{x}
+	for x < xEnd {
+		dy := f(x, y)
+		for i := range y {
+			y[i] += step * dy[i]
 		}
-		dfx := df(x)
-		if absL(dfx) < 1e-15 {
-			break
-		}
-		x -= fx / dfx
+		x += step
+		xs = append(xs, x)
 	}
-	return x
+	return xs, y
 }
 
-func Bisection(f Function, a, b float64, tol float64) float64 {
-	fa := f(a)
-	for i := 0; i < 100; i++ {
-		c := (a + b) / 2
-		fc := f(c)
-		if absL(fc) < tol || (b-a)/2 < tol {
-			return c
+func RK4System(f ODESystem, x0 float64, y0 []float64, xEnd, step float64) ([]float64, []float64) {
+	x := x0
+	y := make([]float64, len(y0))
+	copy(y, y0)
+	xs := []float64{x}
+	for x < xEnd {
+		k1 := f(x, y)
+		y2 := addVecSys(y, scaleVecSys(k1, step/2))
+		k2 := f(x+step/2, y2)
+		y3 := addVecSys(y, scaleVecSys(k2, step/2))
+		k3 := f(x+step/2, y3)
+		y4 := addVecSys(y, scaleVecSys(k3, step))
+		k4 := f(x+step, y4)
+		for i := range y {
+			y[i] += step * (k1[i] + 2*k2[i] + 2*k3[i] + k4[i]) / 6
 		}
-		if fa*fc < 0 {
-			b = c
-		} else {
-			a = c
-			fa = fc
-		}
+		x += step
+		xs = append(xs, x)
 	}
-	return (a + b) / 2
+	return xs, y
 }
 
-func Secant(f Function, x0, x1 float64, maxIter int) float64 {
-	for i := 0; i < maxIter; i++ {
-		f0 := f(x0)
-		f1 := f(x1)
-		if absL(f1-f0) < 1e-15 {
-			break
-		}
-		x2 := x1 - f1*(x1-x0)/(f1-f0)
-		if absL(x2-x1) < 1e-12 {
-			return x2
-		}
-		x0 = x1
-		x1 = x2
+func AdamsBashforth2(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
+	x := x0
+	y := y0
+	k1 := f(x, y)
+	y1 := y + step*k1
+	x1 := x + step
+	k2 := f(x1, y1)
+	x = x1
+	y = y1
+	for x < xEnd {
+		yNext := y + step*(1.5*k2-0.5*k1)
+		xNext := x + step
+		k1 = k2
+		k2 = f(xNext, yNext)
+		x = xNext
+		y = yNext
 	}
-	return x1
+	return y
 }
 
-func GradientDescent(f MultiFunction, x0 []float64, alpha float64, maxIter int) []float64 {
-	x := make([]float64, len(x0))
-	copy(x, x0)
-	for i := 0; i < maxIter; i++ {
-		grad := Gradient(f, x)
-		norm := 0.0
-		for _, g := range grad {
-			norm += g * g
-		}
-		if sqrtS(norm) < 1e-8 {
-			break
-		}
-		for j := range x {
-			x[j] -= alpha * grad[j]
-		}
+func AdamsMoulton2(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
+	x := x0
+	y := y0
+	k1 := f(x, y)
+	y = y + step*k1
+	x = x + step
+	for x < xEnd {
+		k2 := f(x, y)
+		y = y + step*0.5*(k2+k1)
+		k1 = k2
+		x += step
 	}
-	return x
+	return y
 }
 
-func sqrtS(x float64) float64 {
-	if x <= 0 {
+func PredictorCorrector(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
+	x := x0
+	y := y0
+	k1 := f(x, y)
+	y = y + step*k1
+	x = x + step
+	for x < xEnd {
+		k2 := f(x, y)
+		yPred := y + step*k2
+		k3 := f(x+step, yPred)
+		y = y + step*0.5*(k2+k3)
+		x += step
+	}
+	return y
+}
+
+func ExplicitEulerStability(lambda float64, step float64) bool {
+	return absL(1+step*lambda) < 1
+}
+
+func LogisticGrowth(r, K float64) DifferentialEquation {
+	return func(x, y float64) float64 {
+		_ = x
+		return r * y * (1 - y/K)
+	}
+}
+
+func LotkaVolterra(alpha, beta, delta, gamma float64) ODESystem {
+	return func(x float64, y []float64) []float64 {
+		_ = x
+		if len(y) < 2 {
+			return []float64{0, 0}
+		}
+		dx := alpha*y[0] - beta*y[0]*y[1]
+		dy := delta*y[0]*y[1] - gamma*y[1]
+		return []float64{dx, dy}
+	}
+}
+
+func DampedOscillator(omega, damping float64) ODESystem {
+	return func(x float64, y []float64) []float64 {
+		_ = x
+		if len(y) < 2 {
+			return []float64{0, 0}
+		}
+		return []float64{y[1], -2*damping*y[1] - omega*omega*y[0]}
+	}
+}
+
+func EnergyOscillator(y []float64, omega float64) float64 {
+	if len(y) < 2 {
 		return 0
 	}
-	z := x
-	for i := 0; i < 50; i++ {
-		z = 0.5 * (z + x/z)
-	}
-	return z
+	return 0.5 * (y[1]*y[1] + omega*omega*y[0]*y[0])
 }
 
-//MMMMMMMM               MMMMMMMM     OOOOOOOOO     UUUUUUUU     UUUUUUUU           AAA                              AAA               DDDDDDDDDDDDD        
-//M:::::::M             M:::::::M   OO:::::::::OO   U::::::U     U::::::U          A:::A                            A:::A              D::::::::::::DDD     
-//M::::::::M           M::::::::M OO:::::::::::::OO U::::::U     U::::::U         A:::::A                          A:::::A             D:::::::::::::::DD   
-//M:::::::::M         M:::::::::MO:::::::OOO:::::::OUU:::::U     U:::::UU        A:::::::A                        A:::::::A            DDD:::::DDDDD:::::D  
-//M::::::::::M       M::::::::::MO::::::O   O::::::O U:::::U     U:::::U        A:::::::::A                      A:::::::::A             D:::::D    D:::::D 
-//M:::::::::::M     M:::::::::::MO:::::O     O:::::O U:::::D     D:::::U       A:::::A:::::A                    A:::::A:::::A            D:::::D     D:::::D
-//M:::::::M::::M   M::::M:::::::MO:::::O     O:::::O U:::::D     D:::::U      A:::::A A:::::A                  A:::::A A:::::A           D:::::D     D:::::D
-//M::::::M M::::M M::::M M::::::MO:::::O     O:::::O U:::::D     D:::::U     A:::::A   A:::::A                A:::::A   A:::::A          D:::::D     D:::::D
-//M::::::M  M::::M::::M  M::::::MO:::::O     O:::::O U:::::D     D:::::U    A:::::A     A:::::A              A:::::A     A:::::A         D:::::D     D:::::D
-//M::::::M   M:::::::M   M::::::MO:::::O     O:::::O U:::::D     D:::::U   A:::::AAAAAAAAA:::::A            A:::::AAAAAAAAA:::::A        D:::::D     D:::::D
-//M::::::M    M:::::M    M::::::MO:::::O     O:::::O U:::::D     D:::::U  A:::::::::::::::::::::A          A:::::::::::::::::::::A       D:::::D     D:::::D
-//M::::::M     MMMMM     M::::::MO::::::O   O::::::O U::::::U   U::::::U A:::::AAAAAAAAAAAAA:::::A        A:::::AAAAAAAAAAAAA:::::A      D:::::D    D:::::D 
-//M::::::M               M::::::MO:::::::OOO:::::::O U:::::::UUU:::::::UA:::::A             A:::::A      A:::::A             A:::::A   DDD:::::DDDDD:::::D  
-//M::::::M               M::::::M OO:::::::::::::OO   UU:::::::::::::UUA:::::A               A:::::A    A:::::A               A:::::A  D:::::::::::::::DD   
-//M::::::M               M::::::M   OO:::::::::OO       UU:::::::::UU A:::::A                 A:::::A  A:::::A                 A:::::A D::::::::::::DDD     
-//MMMMMMMM               MMMMMMMM     OOOOOOOOO           UUUUUUUUU  AAAAAAA                   AAAAAAAAAAAAAA                   AAAAAAADDDDDDDDDDDDD        
-// Created by: MOUAAD IDOUFKIR
-// << The universe runs on equations. We just translate them >>
+func ShootingMethod(f DifferentialEquation, x0, xEnd, y0, target, guess1, guess2, step float64) float64 {
+	g := func(slope float64) float64 {
+		y := y0
+		x := x0
+		v := slope
+		for x < xEnd {
+			k1 := step * v
+			l1 := step * f(x, y)
+			k2 := step * (v + 0.5*l1)
+			l2 := step * f(x+0.5*step, y+0.5*k1)
+			k3 := step * (v + 0.5*l2)
+			l3 := step * f(x+0.5*step, y+0.5*k2)
+			k4 := step * (v + l3)
+			l4 := step * f(x+step, y+k3)
+			y += (k1 + 2*k2 + 2*k3 + k4) / 6
+			v += (l1 + 2*l2 + 2*l3 + l4) / 6
+			x += step
+		}
+		return y - target
+	}
+	for i := 0; i < 20; i++ {
+		f1 := g(guess1)
+		f2 := g(guess2)
+		if f2-f1 == 0 {
+			break
+		}
+		guess3 := guess2 - f2*(guess2-guess1)/(f2-f1)
+		guess1, guess2 = guess2, guess3
+		if absL(g(guess2)) < 1e-6 {
+			break
+		}
+	}
+	return guess2
+}
+
+func StabilityRegionRK4(lambda float64, step float64) float64 {
+	z := lambda * step
+	return 1 + z + z*z/2 + z*z*z/6 + z*z*z*z/24
+}
+
+func ExplicitEulerLocalError(f DifferentialEquation, x, y, step float64) float64 {
+	return absL(step * step * Derivative(func(t float64) float64 { return f(t, y) }, x))
+}
+
+func addVecSys(a, b []float64) []float64 {
+	out := make([]float64, len(a))
+	for i := range a {
+		out[i] = a[i] + b[i]
+	}
+	return out
+}
+
+func scaleVecSys(a []float64, s float64) []float64 {
+	out := make([]float64, len(a))
+	for i := range a {
+		out[i] = a[i] * s
+	}
+	return out
+}
+
+func ODEErrorEstimate(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
+	y1 := RungeKutta4(f, x0, y0, xEnd, step)
+	y2 := RungeKutta4(f, x0, y0, xEnd, step/2)
+	return absL(y2 - y1)
+}
+
+func TimeGrid(x0, xEnd, step float64) []float64 {
+	count := int(math.Ceil((xEnd-x0)/step)) + 1
+	grid := make([]float64, count)
+	for i := 0; i < count; i++ {
+		grid[i] = x0 + float64(i)*step
+	}
+	return grid
+}
+
+func EulerFull(f DifferentialEquation, x0, y0, xEnd, step float64) ([]float64, []float64) {
+	x := x0
+	y := y0
+	xs := []float64{x}
+	ys := []float64{y}
+	for x < xEnd {
+		y += step * f(x, y)
+		x += step
+		xs = append(xs, x)
+		ys = append(ys, y)
+	}
+	return xs, ys
+}
+
+func HeunFull(f DifferentialEquation, x0, y0, xEnd, step float64) ([]float64, []float64) {
+	x := x0
+	y := y0
+	xs := []float64{x}
+	ys := []float64{y}
+	for x < xEnd {
+		k1 := f(x, y)
+		k2 := f(x+step, y+step*k1)
+		y += step * (k1 + k2) / 2
+		x += step
+		xs = append(xs, x)
+		ys = append(ys, y)
+	}
+	return xs, ys
+}
+
+func MidpointFull(f DifferentialEquation, x0, y0, xEnd, step float64) ([]float64, []float64) {
+	x := x0
+	y := y0
+	xs := []float64{x}
+	ys := []float64{y}
+	for x < xEnd {
+		k1 := f(x, y)
+		k2 := f(x+step/2, y+step*k1/2)
+		y += step * k2
+		x += step
+		xs = append(xs, x)
+		ys = append(ys, y)
+	}
+	return xs, ys
+}
+
+func RichardsonExtrapolation(y1, y2 float64, order int) float64 {
+	factor := math.Pow(2, float64(order))
+	return y2 + (y2-y1)/(factor-1)
+}
+
+func RK4WithExtrapolation(f DifferentialEquation, x0, y0, xEnd, step float64) float64 {
+	y1 := RungeKutta4(f, x0, y0, xEnd, step)
+	y2 := RungeKutta4(f, x0, y0, xEnd, step/2)
+	return RichardsonExtrapolation(y1, y2, 4)
+}
+
+func EulerStabilityTest(f DifferentialEquation, x0, y0, xEnd float64, step float64, reference float64) bool {
+	y := EulerMethod(f, x0, y0, xEnd, step)
+	return absL(y-reference) < 1e-3
+}

@@ -1,4 +1,7 @@
+// 2026 Update: Series
 package calculus
+
+import "math"
 
 type Sequence func(int) float64
 
@@ -80,92 +83,374 @@ func AlternatingSeries(seq Sequence, n int) float64 {
 	return sum
 }
 
-func TaylorSeries(f Function, a float64, n int) func(float64) float64 {
-	coeffs := make([]float64, n+1)
-	coeffs[0] = f(a)
-	df := f
+func AlternatingTest(seq Sequence, n int) bool {
 	for i := 1; i <= n; i++ {
-		dfNew := func(g Function) Function {
-			return func(x float64) float64 {
-				return Derivative(g, x)
-			}
-		}(df)
-		df = dfNew
-		coeffs[i] = df(a) / factorialS(i)
+		if seq(i) > seq(i-1) {
+			return false
+		}
 	}
+	return true
+}
+
+func TelescopingSum(seq Sequence, n int) float64 {
+	return PartialSum(seq, n)
+}
+
+func PowerSeries(coeffs []float64) Function {
 	return func(x float64) float64 {
 		sum := 0.0
-		h := 1.0
-		for i := 0; i <= n; i++ {
-			sum += coeffs[i] * h
-			h *= (x - a)
+		pow := 1.0
+		for i := 0; i < len(coeffs); i++ {
+			sum += coeffs[i] * pow
+			pow *= x
 		}
 		return sum
 	}
 }
 
-func powerS(base, exp float64) float64 {
-	if base <= 0 {
-		return 0
+func TaylorSeries(f Function, a float64, n int) Function {
+	coeffs := make([]float64, n+1)
+	for i := 0; i <= n; i++ {
+		coeffs[i] = NthDerivative(f, a, i) / factorialS(i)
 	}
-	return expS(exp * lnS(base))
+	return func(x float64) float64 {
+		sum := 0.0
+		pow := 1.0
+		h := x - a
+		for i := 0; i <= n; i++ {
+			sum += coeffs[i] * pow
+			pow *= h
+		}
+		return sum
+	}
 }
 
-func expS(x float64) float64 {
-	if x < 0 {
-		return 1.0 / expS(-x)
-	}
+func MaclaurinSeries(f Function, n int) Function {
+	return TaylorSeries(f, 0, n)
+}
+
+func SeriesExp(x float64, n int) float64 {
 	sum := 1.0
 	term := 1.0
-	for i := 1; i < 50; i++ {
+	for i := 1; i <= n; i++ {
 		term *= x / float64(i)
 		sum += term
 	}
 	return sum
 }
 
-func lnS(x float64) float64 {
-	if x <= 0 {
-		return -1e308
+func SeriesSin(x float64, n int) float64 {
+	sum := 0.0
+	sign := 1.0
+	term := x
+	for i := 1; i <= 2*n-1; i += 2 {
+		sum += sign * term
+		term *= x * x / float64((i+1)*(i+2))
+		sign = -sign
 	}
-	y := x - 1.0
-	for i := 0; i < 50; i++ {
-		ey := expS(y)
-		diff := ey - x
-		if absL(diff) < 1e-12 {
-			return y
+	return sum
+}
+
+func SeriesCos(x float64, n int) float64 {
+	sum := 1.0
+	sign := -1.0
+	term := x * x
+	for i := 2; i <= 2*n; i += 2 {
+		sum += sign * term
+		term *= x * x / float64((i+1)*(i+2))
+		sign = -sign
+	}
+	return sum
+}
+
+func SeriesLog1p(x float64, n int) float64 {
+	sum := 0.0
+	for i := 1; i <= n; i++ {
+		term := powerS(-1, float64(i+1)) * powerS(x, float64(i)) / float64(i)
+		sum += term
+	}
+	return sum
+}
+
+func SeriesArctan(x float64, n int) float64 {
+	sum := 0.0
+	sign := 1.0
+	pow := x
+	for i := 1; i <= 2*n-1; i += 2 {
+		sum += sign * pow / float64(i)
+		pow *= x * x
+		sign = -sign
+	}
+	return sum
+}
+
+func SeriesSinh(x float64, n int) float64 {
+	sum := 0.0
+	term := x
+	for i := 1; i <= 2*n-1; i += 2 {
+		sum += term
+		term *= x * x / float64((i+1)*(i+2))
+	}
+	return sum
+}
+
+func SeriesCosh(x float64, n int) float64 {
+	sum := 1.0
+	term := x * x
+	for i := 2; i <= 2*n; i += 2 {
+		sum += term
+		term *= x * x / float64((i+1)*(i+2))
+	}
+	return sum
+}
+
+func SeriesBinomial(alpha, x float64, n int) float64 {
+	sum := 1.0
+	term := 1.0
+	for i := 1; i <= n; i++ {
+		term *= (alpha - float64(i-1)) * x / float64(i)
+		sum += term
+	}
+	return sum
+}
+
+func SeriesConverges(seq Sequence, tol float64, n int) bool {
+	prev := seq(1)
+	for i := 2; i <= n; i++ {
+		curr := seq(i)
+		if absL(curr-prev) < tol {
+			return true
 		}
-		y -= diff / ey
+		prev = curr
 	}
-	return y
+	return false
+}
+
+func SeriesLimit(seq Sequence, n int) float64 {
+	prev := seq(1)
+	for i := 2; i <= n; i++ {
+		curr := seq(i)
+		if absL(curr-prev) < 1e-9 {
+			return curr
+		}
+		prev = curr
+	}
+	return prev
+}
+
+func SequenceLimit(seq Sequence, n int) float64 {
+	return SeriesLimit(seq, n)
+}
+
+func SequenceDifference(seq Sequence, n int) Sequence {
+	return func(k int) float64 {
+		return seq(k+1) - seq(k)
+	}
+}
+
+func SequenceRatio(seq Sequence, n int) Sequence {
+	return func(k int) float64 {
+		den := seq(k)
+		if den == 0 {
+			return 0
+		}
+		return seq(k+1) / den
+	}
+}
+
+func SequencePartialSums(seq Sequence, n int) []float64 {
+	sums := make([]float64, n+1)
+	sum := 0.0
+	for i := 0; i <= n; i++ {
+		sum += seq(i)
+		sums[i] = sum
+	}
+	return sums
+}
+
+func CauchyCond(seq Sequence, n int, tol float64) bool {
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			sum := 0.0
+			for k := i; k <= j; k++ {
+				sum += seq(k)
+			}
+			if absL(sum) > tol {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func AbelTest(a, b Sequence, n int) bool {
+	if !SequenceIsMonotone(b, n) {
+		return false
+	}
+	if absL(SequenceLimit(b, n)) > 1e3 {
+		return false
+	}
+	if !CauchyCond(a, n, 1e-3) {
+		return false
+	}
+	return true
+}
+
+func DirichletTest(a, b Sequence, n int) bool {
+	if !SequenceIsMonotone(b, n) {
+		return false
+	}
+	if !SequenceTendsToZero(b, n) {
+		return false
+	}
+	if !CauchyCond(a, n, 1e-3) {
+		return false
+	}
+	return true
+}
+
+func SequenceIsMonotone(seq Sequence, n int) bool {
+	inc := true
+	dec := true
+	prev := seq(0)
+	for i := 1; i <= n; i++ {
+		curr := seq(i)
+		if curr < prev {
+			inc = false
+		}
+		if curr > prev {
+			dec = false
+		}
+		prev = curr
+	}
+	return inc || dec
+}
+
+func SequenceTendsToZero(seq Sequence, n int) bool {
+	prev := absL(seq(0))
+	for i := 1; i <= n; i++ {
+		curr := absL(seq(i))
+		if curr > prev && curr > 1e-3 {
+			return false
+		}
+		prev = curr
+	}
+	return prev < 1e-6
+}
+
+func SeriesAccelerationShanks(s0, s1, s2 float64) float64 {
+	num := s2*s0 - s1*s1
+	den := s2 - 2*s1 + s0
+	if den == 0 {
+		return s2
+	}
+	return num / den
+}
+
+func AitkenDeltaSquared(seq Sequence, n int) float64 {
+	s0 := seq(n)
+	s1 := seq(n + 1)
+	s2 := seq(n + 2)
+	return SeriesAccelerationShanks(s0, s1, s2)
+}
+
+func CesaroMean(seq Sequence, n int) float64 {
+	sum := 0.0
+	for i := 0; i <= n; i++ {
+		sum += seq(i)
+	}
+	return sum / float64(n+1)
+}
+
+func SeriesConvolution(a, b Sequence, n int) float64 {
+	sum := 0.0
+	for k := 0; k <= n; k++ {
+		sum += a(k) * b(n-k)
+	}
+	return sum
+}
+
+func powerS(base, exp float64) float64 {
+	return math.Pow(base, exp)
 }
 
 func factorialS(n int) float64 {
 	if n <= 1 {
 		return 1
 	}
-	result := 1.0
+	res := 1.0
 	for i := 2; i <= n; i++ {
-		result *= float64(i)
+		res *= float64(i)
 	}
-	return result
+	return res
 }
 
-//MMMMMMMM               MMMMMMMM     OOOOOOOOO     UUUUUUUU     UUUUUUUU           AAA                              AAA               DDDDDDDDDDDDD        
-//M:::::::M             M:::::::M   OO:::::::::OO   U::::::U     U::::::U          A:::A                            A:::A              D::::::::::::DDD     
-//M::::::::M           M::::::::M OO:::::::::::::OO U::::::U     U::::::U         A:::::A                          A:::::A             D:::::::::::::::DD   
-//M:::::::::M         M:::::::::MO:::::::OOO:::::::OUU:::::U     U:::::UU        A:::::::A                        A:::::::A            DDD:::::DDDDD:::::D  
-//M::::::::::M       M::::::::::MO::::::O   O::::::O U:::::U     U:::::U        A:::::::::A                      A:::::::::A             D:::::D    D:::::D 
-//M:::::::::::M     M:::::::::::MO:::::O     O:::::O U:::::D     D:::::U       A:::::A:::::A                    A:::::A:::::A            D:::::D     D:::::D
-//M:::::::M::::M   M::::M:::::::MO:::::O     O:::::O U:::::D     D:::::U      A:::::A A:::::A                  A:::::A A:::::A           D:::::D     D:::::D
-//M::::::M M::::M M::::M M::::::MO:::::O     O:::::O U:::::D     D:::::U     A:::::A   A:::::A                A:::::A   A:::::A          D:::::D     D:::::D
-//M::::::M  M::::M::::M  M::::::MO:::::O     O:::::O U:::::D     D:::::U    A:::::A     A:::::A              A:::::A     A:::::A         D:::::D     D:::::D
-//M::::::M   M:::::::M   M::::::MO:::::O     O:::::O U:::::D     D:::::U   A:::::AAAAAAAAA:::::A            A:::::AAAAAAAAA:::::A        D:::::D     D:::::D
-//M::::::M    M:::::M    M::::::MO:::::O     O:::::O U:::::D     D:::::U  A:::::::::::::::::::::A          A:::::::::::::::::::::A       D:::::D     D:::::D
-//M::::::M     MMMMM     M::::::MO::::::O   O::::::O U::::::U   U::::::U A:::::AAAAAAAAAAAAA:::::A        A:::::AAAAAAAAAAAAA:::::A      D:::::D    D:::::D 
-//M::::::M               M::::::MO:::::::OOO:::::::O U:::::::UUU:::::::UA:::::A             A:::::A      A:::::A             A:::::A   DDD:::::DDDDD:::::D  
-//M::::::M               M::::::M OO:::::::::::::OO   UU:::::::::::::UUA:::::A               A:::::A    A:::::A               A:::::A  D:::::::::::::::DD   
-//M::::::M               M::::::M   OO:::::::::OO       UU:::::::::UU A:::::A                 A:::::A  A:::::A                 A:::::A D::::::::::::DDD     
-//MMMMMMMM               MMMMMMMM     OOOOOOOOO           UUUUUUUUU  AAAAAAA                   AAAAAAAAAAAAAA                   AAAAAAADDDDDDDDDDDDD        
-// Created by: MOUAAD IDOUFKIR
-// << The universe runs on equations. We just translate them >>
+func SeriesFromCoeffs(coeffs []float64) Sequence {
+	return func(n int) float64 {
+		if n < 0 || n >= len(coeffs) {
+			return 0
+		}
+		return coeffs[n]
+	}
+}
+
+func BinomialCoefficients(n int) []float64 {
+	coeffs := make([]float64, n+1)
+	coeffs[0] = 1
+	for k := 1; k <= n; k++ {
+		coeffs[k] = coeffs[k-1] * float64(n-k+1) / float64(k)
+	}
+	return coeffs
+}
+
+func SeriesEvaluate(coeffs []float64, x float64, n int) float64 {
+	sum := 0.0
+	pow := 1.0
+	limit := n
+	if limit > len(coeffs)-1 {
+		limit = len(coeffs) - 1
+	}
+	for i := 0; i <= limit; i++ {
+		sum += coeffs[i] * pow
+		pow *= x
+	}
+	return sum
+}
+
+func SeriesShift(coeffs []float64, shift float64) []float64 {
+	out := make([]float64, len(coeffs))
+	for k := 0; k < len(coeffs); k++ {
+		for j := k; j < len(coeffs); j++ {
+			out[j] += coeffs[k] * BinomialCoefficients(j)[k] * powerS(shift, float64(j-k))
+		}
+	}
+	return out
+}
+
+func AbelTransform(a, b Sequence, n int) float64 {
+	sum := 0.0
+	partial := 0.0
+	for k := 0; k <= n; k++ {
+		partial += a(k)
+		sum += partial * (b(k) - b(k+1))
+	}
+	return sum
+}
+
+func CesaroSequence(seq Sequence, n int) Sequence {
+	return func(k int) float64 {
+		sum := 0.0
+		for i := 0; i <= k; i++ {
+			sum += seq(i)
+		}
+		return sum / float64(k+1)
+	}
+}
+
+func SeriesDifference(seq Sequence, n int) []float64 {
+	vals := make([]float64, n)
+	for i := 0; i < n; i++ {
+		vals[i] = seq(i+1) - seq(i)
+	}
+	return vals
+}

@@ -29,12 +29,6 @@ func DefaultNelderMeadSettings() NelderMeadSettings {
 	}
 }
 
-func cloneVector(v []float64) []float64 {
-	out := make([]float64, len(v))
-	copy(out, v)
-	return out
-}
-
 func addVectors(a, b []float64) []float64 {
 	out := make([]float64, len(a))
 	for i := range a {
